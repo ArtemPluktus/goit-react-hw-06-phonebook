@@ -1,16 +1,21 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import css from './Phonebook.module.css';
 import { ContactForm } from './ContactForm.jsx';
 import { Filter } from './Filter.jsx';
 import { ContactList } from './ContactList';
 
-export function Phonebook() {
-  const initialContacts = JSON.parse(localStorage.getItem('contacts')) || [];
+import { saveContacts, deleteContacts } from '../../redux/contactsSlice.js';
+import { listFilter } from '../../redux/filterSlice.js';
 
-  const [contacts, setContacts] = useState(initialContacts);
+export function Phonebook() {
   const [name, setName] = useState(``);
   const [number, setNumber] = useState(``);
-  const [filter, setFilter] = useState(``);
+
+  const dispatch = useDispatch();
+
+  const contactsList = useSelector(state => state.contacts);
+  const myFilter = useSelector(state => state.filter);
 
   const handleInputNameChange = e => {
     setName(e.currentTarget.value);
@@ -23,38 +28,30 @@ export function Phonebook() {
   const saveContact = e => {
     e.preventDefault();
 
-    for (let el of contacts) {
+    for (let el of contactsList) {
       if (el.name === name) {
         return alert(`${name} is already in contacts`);
       }
     }
 
-    setContacts([...contacts, { name, number }]);
+    dispatch(saveContacts({ name, number }));
+
     setName('');
     setNumber('');
   };
 
-  const listFilter = e => {
-    setFilter(e.currentTarget.value);
+  const handleDeleteContact = name => {
+    dispatch(deleteContacts(name));
   };
 
-  const filtredList = useMemo(() => {
-    const normalizedFilter = filter.toLowerCase();
-
-    return contacts.filter(
+  const filteredList = () => {
+    const normalizedFilter = myFilter.toLowerCase();
+    return contactsList.filter(
       contact =>
         contact.name.toLowerCase().includes(normalizedFilter) ||
         contact.number.toLowerCase().includes(normalizedFilter)
     );
-  }, [contacts, filter]);
-
-  const deleteContact = arg => {
-    setContacts(state => contacts.filter(contact => contact.name !== arg));
   };
-
-  useEffect(() => {
-    localStorage.setItem(`contacts`, JSON.stringify(contacts));
-  }, [contacts]);
 
   return (
     <div className={css.phonebook}>
@@ -68,11 +65,14 @@ export function Phonebook() {
       />
 
       <h2>Contacts</h2>
-      <Filter filter={filter} listFilter={listFilter} />
+      <Filter
+        filter={myFilter}
+        listFilter={e => dispatch(listFilter(e.currentTarget.value))}
+      />
 
       <ContactList
-        filteredContacts={filtredList}
-        deleteContact={deleteContact}
+        filteredContacts={filteredList()}
+        deleteContact={handleDeleteContact}
       />
     </div>
   );
